@@ -147,15 +147,10 @@ def graphPopulation(pop):
         xData.append(item[0])
         yData.append(item[1])
                     
-##    trace1 = go.Scatter(
-##        x=xData,
-##        y=yData
-##    #)
-##    #data = [trace1]
+
     plotly.offline.plot({
         "data": [go.Scatter(x=xData, y=yData)],
         "layout": go.Layout(title="Population change by Generation")
-        #"filename":'linegraph.html'
         })
 
 def main():
