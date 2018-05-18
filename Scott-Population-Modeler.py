@@ -3,7 +3,8 @@
 import random
 import csv # reads the SSA's list of most popular baby names for 2017
 import numpy as np # extra python package to do some math things, install it with "pip install numpy" on the command line
-
+import plotly
+import plotly.graph_objs as go # import some graphs
 # open the babynames file
 with open('babynames.csv', 'r') as f:
     reader = csv.reader(f)
@@ -20,11 +21,13 @@ class Creature:
         self.allele_length = 2
         self.generations_remaining = random.randint(1,4) # creature will be capable of reproduction for 1 - 4 generations
         self.capable_of_breeding = True
-
+    
     def get_older(self):
         self.generations_remaining -= 1
         if self.generations_remaining < 1:
             self.capable_of_breeding = False
+        if random.randint(0,100) < 1:
+            self.capable_of_breeding = False # some people lose the genetic lottery
 
     def make_sterile(self):
         self.capable_of_breeding = False
@@ -39,11 +42,16 @@ class Creature:
 # a class with some population characteristics
 class Population:
     members = [] # initial empty population list
-    def __init__(self, size):
-        self.size = size
+    def __init__(self, vigor):
+        self.vigor = vigor
+        self.generation = 0
+        self.population_history = []
 
     def __iter__(self):
         return self
+
+    def update_generation(self,num):
+        self.generation = num
 
     def add_member(self,creature):
         self.members.append(creature) # add a creature to the population pool
@@ -53,6 +61,16 @@ class Population:
         for creature in self.members:
             print(creature.name,'genome:',creature.genome)
         print("")
+
+    def print_members_to_file(self): # write to file
+        with open('population_summary.txt', 'a') as target:
+            target.write("Generation "+str(self.generation)+" current breeding members: \n")
+            for creature in self.members:
+                target.write(creature.name+' ')
+                target.write('genome:')
+                target.write(" ".join(str(creature.genome)))
+                target.write('\n')
+            target.write("\n")
 
     def population_size(self):
         return len(self.members)
@@ -75,7 +93,7 @@ class Population:
             if parentA.name == parentB.name:
                 return #no self-fertilization
             if parentA.sex == parentB.sex:
-                if random.randint(0,100) < 2: # 2% chance of one member deciding not to breed
+                if random.randint(0,100) < 1: # 1% chance of one member deciding not to breed
                     random.choice([parentA,parentB]).make_sterile() # remove one from breeding pool
             else:
                 creatureAttribute = random.choice(names_list) # randomly choose a name and gender from the names_list
@@ -93,11 +111,15 @@ class Population:
 def setUpWorld(initialPop):
     a = Creature('Adam', 'M')
     b = Creature('Eve', 'F')
+    with open('population_summary.txt', 'w') as target: #initialize new file to write population data to
+            target.write("=========== New Population ========== \n")
     a.generate_genome()
     b.generate_genome()
     myPopulation = Population(initialPop) # create a population
     myPopulation.add_member(a) # add the initial pairing
     myPopulation.add_member(b) # and don't forget the ladies
+    myPopulation.population_history.append((0, 2))
+    myPopulation.print_members_to_file()
     for x in range(0,initialPop): # have them do the nasty to build out your first generation.. Cain and Abel and so forth
         myPopulation.mate(a,b)
     return a,b,myPopulation
@@ -106,21 +128,41 @@ def setUpWorld(initialPop):
 def processGeneration(currentPop):
     populationList = currentPop.return_member_list()
     for creature in populationList:
-        currentPop.mate(creature,random.choice(populationList)) # first shot at love
-        currentPop.mate(creature,random.choice(populationList)) # second shot at love
+        currentPop.mate(creature,random.choice(populationList)) # everyone gets a soulmate
+        if random.randint(0,100) < 75:
+            currentPop.mate(creature,random.choice(populationList)) # some get a second shot at love
         creature.get_older()
-    currentPop.clean_up()
-    print("population size is: ",currentPop.population_size())
+    currentPop.clean_up() # remove the non-breeders
+    currentPop.update_generation(currentPop.generation+1)
+    currentPop.print_members_to_file()
+    print("Gen",currentPop.generation,"population size is: ",currentPop.population_size())
+    currentPop.population_history.append((currentPop.generation, currentPop.population_size()))
     return currentPop
         
 
-
+def graphPopulation(pop):
+    xData = []
+    yData = []
+    for item in pop.population_history:
+        xData.append(item[0])
+        yData.append(item[1])
+                    
+##    trace1 = go.Scatter(
+##        x=xData,
+##        y=yData
+##    #)
+##    #data = [trace1]
+    plotly.offline.plot({
+        "data": [go.Scatter(x=xData, y=yData)],
+        "layout": go.Layout(title="Population change by Generation")
+        #"filename":'linegraph.html'
+        })
 
 def main():
     # create our initial population and randomly generate a genome for them
-    initialPopulationSize = int(input('Enter Initial Population Size: '))
-    numberOfGenerations = int(input('Enter Number of Generations: '))
-    patriarch, matriarch, population = setUpWorld(initialPopulationSize) # save the details of the patriarch, matriach, and the initial population
+    initialPopulationVigor = int(input('Enter Initial Population Vigor: '))
+    numberOfGenerations = int(input('Enter Number of Subsequent Generations: '))
+    patriarch, matriarch, population = setUpWorld(initialPopulationVigor) # save the details of the patriarch, matriach, and the initial population
 
     
     for i in range(0,numberOfGenerations):
@@ -129,6 +171,9 @@ def main():
 
     #population.print_members()
     #print ("population size is: ",population.population_size())
+    #population.print_members_to_file()
+    graphPopulation(population)
+    print (population.population_history)
     print (patriarch.name,"genome: ",patriarch.genome)
     print (matriarch.name,"genome: ",matriarch.genome)
 
