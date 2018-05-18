@@ -50,7 +50,7 @@ class Population:
     def __iter__(self):
         return self
 
-    def update_generation(self,num):
+    def update_generation(self,num): #counter to keep track of which generation we're in
         self.generation = num
 
     def add_member(self,creature):
@@ -62,7 +62,7 @@ class Population:
             print(creature.name,'genome:',creature.genome)
         print("")
 
-    def print_members_to_file(self): # write to file
+    def print_members_to_file(self): # write member data to a file
         with open('population_summary.txt', 'a') as target:
             target.write("Generation "+str(self.generation)+" current breeding members: \n")
             for creature in self.members:
@@ -146,8 +146,6 @@ def graphPopulation(pop):
     for item in pop.population_history:
         xData.append(item[0])
         yData.append(item[1])
-                    
-
     plotly.offline.plot({
         "data": [go.Scatter(x=xData, y=yData)],
         "layout": go.Layout(title="Population change by Generation")
